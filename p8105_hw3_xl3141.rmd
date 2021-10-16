@@ -1,0 +1,122 @@
+---
+title: "p8105_hw3_xl3141"
+author: "Xinyuan Liu"
+date: "10/15/2021"
+output: github_document
+---
+## Set options
+```{r}
+library(tidyverse)
+library(p8105.datasets)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+## Problem 1
+
+```{r}
+data("instacart")
+ncol(instacart)
+nrow(instacart)
+instacart %>% 
+  group_by(product_name) %>% 
+  summarise(n_obs = n()) %>% 
+  filter(n_obs == max(n_obs)) ##choose the most popular product
+
+day_prior = instacart %>% 
+  group_by(user_id) %>% 
+  select(user_id, days_since_prior_order) %>% 
+  unique() ##get the days since prior order for each unique user
+
+mean(pull(day_prior, days_since_prior_order))
+  
+```
+
+The data has 15 columns and 1384617 rows in total. The variables of interest are *days since prior order*, *product name*, and *reordered*. The product that is mostly bought is banana which is bought 18726 times in total. The average days since prior order is 17 days.
+
+```{r}
+instacart %>% 
+  group_by(aisle) %>% 
+  summarise(n_obs = n()) %>% ##count the number of aisles
+  mutate(rank = rank(desc(n_obs))) %>% 
+  filter(rank < 2) ##rank the numbers and find the largest one
+```
+
+We have 134 aisles and most items are ordered from aisle "fresh vegetables".
+
+```{r}
+instacart %>% 
+  group_by(aisle, department) %>% 
+  summarize(n_obs = n()) %>% 
+  filter(n_obs > 10000) %>% ##get aisles with number > 10000
+  relocate(department) %>% 
+  ggplot(aes(x = aisle, y = n_obs, color = department)) +
+  geom_point() +
+  labs(
+    title = "number of items purchased in each aisles",
+    x = "aisle name",
+    y = "number of times purchased"
+  ) +
+  theme(axis.text.x = element_text(size = 6, angle = 45))
+
+```
+
+```{r}
+instacart %>% 
+  group_by(aisle, product_name) %>% 
+  filter(aisle == "baking ingredients") %>% ##look for baking ingredients in aisle column
+  summarize(n_obs = n()) %>% 
+  mutate(rank = rank(desc(n_obs))) %>% ##rank based on popularity
+  filter(rank < 4) %>% 
+  knitr::kable()
+
+instacart %>% 
+  group_by(aisle, product_name) %>% 
+  filter(aisle == "dog food care") %>% 
+  summarize(n_obs = n()) %>% 
+  mutate(rank = rank(desc(n_obs))) %>% 
+  filter(rank < 4) %>% 
+  knitr::kable()
+
+ 
+instacart %>% 
+  group_by(aisle, product_name) %>% 
+  filter(aisle == "packaged vegetables fruits") %>% 
+  summarize(n_obs = n()) %>% 
+  mutate(rank = rank(desc(n_obs))) %>% 
+  filter(rank < 4) %>%
+  knitr::kable()
+```
+
+```{r}
+library(lubridate)
+instacart %>% 
+  group_by(product_name) %>% 
+  mutate(
+    order_dow = order_dow + 1,
+    order_dow = wday(order_dow, label = TRUE)) %>% ##make number data into word
+  select(order_dow, order_hour_of_day) %>% 
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  group_by(product_name, order_dow) %>% 
+  summarize(mean = mean(order_hour_of_day)) %>% ##calculate the mean hour of the day based on group "product name" and "order dow"
+  pivot_wider(
+    names_from = "order_dow",
+    values_from = "mean"
+    ) %>% 
+  knitr::kable() ## make it into a 2*7 table
+```
+
