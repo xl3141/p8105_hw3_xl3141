@@ -8,6 +8,9 @@ output: github_document
 ```{r}
 library(tidyverse)
 library(p8105.datasets)
+library(httr)
+library(jsonlite)
+
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -65,13 +68,13 @@ instacart %>%
   filter(n_obs > 10000) %>% ##get aisles with number > 10000
   relocate(department) %>% 
   ggplot(aes(x = aisle, y = n_obs, color = department)) +
-  geom_point() +
+  geom_point(alpha = .3, size = 3) +
   labs(
     title = "number of items purchased in each aisles",
     x = "aisle name",
     y = "number of times purchased"
   ) +
-  theme(axis.text.x = element_text(size = 6, angle = 45))
+  theme(axis.text.x = element_text(size = 6, angle = 30))
 
 ```
 
@@ -118,5 +121,97 @@ instacart %>%
     values_from = "mean"
     ) %>% 
   knitr::kable() ## make it into a 2*7 table
+```
+
+## Problem 2
+
+```{r data import}
+
+var_names = 
+  GET("https://chronicdata.cdc.gov/views/acme-vg9e.json") %>%
+  content("text") %>%
+  fromJSON() %>% 
+  .[["columns"]] %>% 
+  .[["name"]] %>% 
+  .[1:22]
+
+brfss_smart2010 = 
+  GET("https://chronicdata.cdc.gov/views/acme-vg9e/rows.json") %>% 
+  content("text") %>%
+  fromJSON() %>% 
+  .[["data"]]
+
+row_as_tibble = function(row_as_list, var_names) {
+  var_list = row_as_list[9:30]
+  names(var_list) = var_names 
+  var_list[sapply(var_list, is.null)] <- NULL
+  as_tibble(var_list, validate = FALSE)
+}
+
+brfss_smart2010 = 
+  brfss_smart2010 %>% 
+  map(.x = ., ~row_as_tibble(.x, var_names)) %>% 
+  bind_rows
+```
+
+```{r data cleaning}
+
+
+brfss_smart2010 = 
+  brfss_smart2010 %>% 
+    janitor::clean_names() %>% 
+    filter(topic == "Overall Health") %>% 
+    mutate(response = factor(x = response, levels = c("Poor", "Fair", "Good", "Very Good", "Excellent"), ordered = TRUE)) %>% ##organize responses as a factortaking levels ordered from poor to excellent 
+    drop_na(response)
+  
+```
+
+```{r}
+brfss_smart2010 %>% 
+  filter(year == "2002") %>%
+  group_by(locationabbr) %>% 
+  summarize(n_obs = n()) %>% 
+  filter(n_obs >= 7) %>% ## show states observed more than 7 in 2002
+  knitr::kable()
+
+brfss_smart2010 %>% 
+  filter(year == "2010") %>%
+  group_by(locationabbr) %>% 
+  summarize(n_obs = n()) %>% 
+  filter(n_obs >= 7) %>% ## show states observed more than 7 in 2010
+  knitr::kable()
+ 
+```
+
+```{r PLOT}
+excellent_df = 
+  brfss_smart2010 %>% 
+  filter(response == "Excellent") %>% ##include only excellent response
+  group_by(locationabbr, year) %>% 
+  summarize(mean_data_value = mean(as.integer(data_value))) ## take the mean of data value based on state and year
+
+ggp_data_value = 
+  excellent_df %>% 
+  ggplot(aes(x = year, y = mean_data_value, color = locationabbr)) +
+  geom_point() +
+  geom_line(aes(group = locationabbr)) +
+  labs(
+    title = "mean data value across year for each state",
+    x = "year",
+    y = "mean data value"
+  ) 
+
+ggp_data_value
+
+```
+
+```{r}
+brfss_smart2010 %>% 
+  filter(locationabbr == "NY", year %in% c("2006", "2010")) %>% ## show only NY state data in 2006 and 2010
+  group_by(response, year) %>% 
+  summarise(mean_NY_data_value = mean(as.integer(data_value))) %>% ## take the mean data value based on response and year 
+  ggplot(aes(response, mean_NY_data_value)) +
+  geom_bar(stat = "identity") +
+  facet_grid(. ~ year)
 ```
 
