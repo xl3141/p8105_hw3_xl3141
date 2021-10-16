@@ -10,7 +10,7 @@ library(tidyverse)
 library(p8105.datasets)
 library(httr)
 library(jsonlite)
-
+library(ggridges)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -215,3 +215,48 @@ brfss_smart2010 %>%
   facet_grid(. ~ year)
 ```
 
+## Problem 3
+
+```{r}
+accel_df = 
+  read_csv("accel_data.csv") %>% 
+  janitor::clean_names()
+
+accel_df = 
+  accel_df %>% 
+  mutate(
+    total_activity = rowSums(accel_df[, 4:1443]),
+    weekday_weekend = day,
+    weekday_weekend = replace(weekday_weekend, weekday_weekend %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"), "Weekday"),
+    weekday_weekend = replace(weekday_weekend, weekday_weekend %in% c("Saturday", "Sunday"), "Weekend")
+  )
+```
+
+The dataset describes the activity count on weekdays and weekendss over 5 weeks. The important variables include *week*, *day*, *weekday vs weekend*, and *total activity count across one day*. In total, we have 1440 activities observed everyday.
+
+```{r}
+accel_df %>% 
+  select(week, day, total_activity) %>% 
+  pivot_wider(
+    names_from = "day",
+    values_from = "total_activity"
+  ) %>% ## make the total activity into a wider format based on day. 
+  relocate(Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) %>% 
+  knitr::kable()
+```
+
+There is a significant decrease on the total activity count on Sunday for week 4 and 5
+
+```{r}
+accel_df %>% 
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "activity",
+    values_to = "count",
+    names_prefix = "activity_"
+  ) %>% ## make the activity counts into a long format
+  ggplot(aes(x = as.numeric(activity), y = count, color = day)) +
+  geom_smooth(alpha = .1) 
+```
+
+In general, the patient has higher activity count during daytime compared to at night. The activity count spikes during the morning on Sunday and during the night time on Friday, which suggest that the patient usually have greater physical activity during those two time periods.
