@@ -10,7 +10,7 @@ library(tidyverse)
 library(p8105.datasets)
 library(httr)
 library(jsonlite)
-library(ggridges)
+library(lubridate)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -106,7 +106,7 @@ instacart %>%
 ```
 
 ```{r}
-library(lubridate)
+
 instacart %>% 
   group_by(product_name) %>% 
   mutate(
@@ -156,12 +156,11 @@ brfss_smart2010 =
 
 ```{r data cleaning}
 
-
 brfss_smart2010 = 
   brfss_smart2010 %>% 
     janitor::clean_names() %>% 
     filter(topic == "Overall Health") %>% 
-    mutate(response = factor(x = response, levels = c("Poor", "Fair", "Good", "Very Good", "Excellent"), ordered = TRUE)) %>% ##organize responses as a factortaking levels ordered from poor to excellent 
+    mutate(response = factor(x = response, levels = c("Poor", "Fair", "Good", "Very good", "Excellent"), ordered = TRUE)) %>% ##organize responses as a factortaking levels ordered from poor to excellent 
     drop_na(response)
   
 ```
@@ -199,7 +198,8 @@ ggp_data_value =
     title = "mean data value across year for each state",
     x = "year",
     y = "mean data value"
-  ) 
+  ) +
+  theme(legend.position = "right")
 
 ggp_data_value
 
